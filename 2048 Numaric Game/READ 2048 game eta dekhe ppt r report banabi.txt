@@ -1,0 +1,248 @@
+import tkinter as tk          #we use tkinter for graphical user interface or GUI / Tkinter package ("Tk interface") is the standard python interface to the tk GUI toolkit.it is the only framework built into the python standard library
+import random
+import color as c			#import color.py in main.py (2048.py) we maintain approximately try to give it same colors the the original 2014 game had.  
+
+
+class Game(tk.Frame):   #here we create a game class that was inharrit from tkinter frame rigion
+    def __init__(self):  # A constuctor will call frame constuctor on self to constuct the game as a frame rigion 
+        tk.Frame.__init__(self)  #we call grid to allow to create our game gird  & set the title of the window 2048 (till line 10)
+        self.grid()
+        self.master.title('2048')
+
+        self.main_grid = tk.Frame(			#here make outline of GUI which will b a 4/4(4 by 4) grid //create a frame called frame grid 
+            self, bg=c.GRID_COLOR, bd=3, width=400, height=400) #set the background color (GRID_COLOR) from color.py boder 3 pixels , make width & height 400
+        self.main_grid.grid(pady=(80, 0))	#call grid on it giving a pady on the top for score header
+        self.make_GUI()					# call make_GUI back in the constuctor
+        self.start_game()				# call start game into the constuctor
+
+        self.master.bind("<Left>", self.left)		# call self.master,bind on each of the arrow keys and coresponding functions called by the same name 
+        self.master.bind("<Right>", self.right)
+        self.master.bind("<Up>", self.up)
+        self.master.bind("<Down>", self.down)
+
+        self.mainloop()					# GUI windows is continuously running
+
+
+    def make_GUI(self): 	#make a 4/4 grid in a new func called make_GUI inside create a variable called self 
+        # make grid
+        self.cells = []	#a 2D list holding the information continue each cell of the grid 
+        for i in range(4): # nested for loop to append to cells row by row  
+            row = []  		
+            for j in range(4):
+                cell_frame = tk.Frame( 	#each cell create a self frame
+                    self.main_grid,		# which inherit from the main grid
+                    bg=c.EMPTY_CELL_COLOR, # set background color with EMPTY_CELL_COLOR
+                    width=100,				#width of 100
+                    height=100)				#height of 100
+                cell_frame.grid(row=i, column=j, padx=5, pady=5)	#then we call grid on each cell frame with row as i & column as j // add 5 pixels of padding on each side which will allow fo the grid lines to appear between  cells  
+                cell_number = tk.Label(self.main_grid, bg=c.EMPTY_CELL_COLOR)	#for each cell will also make a tk into lebel widget which will be used to display the number values of the cell will pass main grid to this and set the background to EMPTY_CELL_COLOR,
+                cell_number.grid(row=i, column=j)								#color will call each of these call display and again call grid with rows i and column j
+                cell_data = {"frame": cell_frame, "number": cell_number}		#create a disktionary called cell_data to store the data for these widgets making call frame value to key frame & cell number the value to a key number
+                row.append(cell_data)					#then append each cell data to row and each row cells (till line 42)
+            self.cells.append(row)
+
+        # make score header                 #now we have to make a score header
+        score_frame = tk.Frame(self)		#we make a another frame called called score frame and will position this at center top of the window by
+        score_frame.place(relx=0.5, y=40, anchor="center") #calling place with relx = 0.5 y = 40 & anchor as center to justify it in the center 
+        tk.Label(							# add a lebel that says score with our defined font we also called gird row equals zero on this lebel to position at the top (till line 51)
+            score_frame,
+            text="Score",
+            font=c.SCORE_LABEL_FONT).grid(
+            row=0)
+        self.score_label = tk.Label(score_frame, text="0", font=c.SCORE_FONT)	#now we have to display the actual score //make another lebel called score labels setting the text initially to zero and setting the font SCORE_FONT
+        self.score_label.grid(row=1)						#call grid row equals one to place this right below the score lebel
+
+
+    def start_game(self):		#write a function start_game that will create the four by four matrix or 2d list and will hold all the values shown on the board at each tuen we 1st initialize the matrix with all zeros. then we have to randomly place two 2s so we need ramdom library (till line 59)
+        # create matrix of zeroes
+        self.matrix = [[0] * 4 for _ in range(4)]
+
+        # fill 2 random cells with 2s
+        row = random.randint(0, 3)		#we randomly select a row and column index to insert a two into the matrix 
+        col = random.randint(0, 3)
+        self.matrix[row][col] = 2		# we have to display this to on the GUi as well which 
+        self.cells[row][col]["frame"].configure(bg=c.CELL_COLORS[2])	#we do by editing both the cell frame and the cell number hence we store information in a disktionary so we will first index into 
+        self.cells[row][col]["number"].configure(						#frame configure to set its background color to our specific cell color for 2
+            bg=c.CELL_COLORS[2],										# then we will index into the number and configure the bg color, font color, font & text ="2" (till line 69)
+            fg=c.CELL_NUMBER_COLORS[2],
+            font=c.CELL_NUMBER_FONTS[2],
+            text="2")
+        while(self.matrix[row][col] != 0):								#one mone time ensureing we choose a different cell at end of this function will create a variable called scored to keep track of the players score 
+            row = random.randint(0, 3)
+            col = random.randint(0, 3)
+        self.matrix[row][col] = 2
+        self.cells[row][col]["frame"].configure(bg=c.CELL_COLORS[2])
+        self.cells[row][col]["number"].configure(
+            bg=c.CELL_COLORS[2],
+            fg=c.CELL_NUMBER_COLORS[2],
+            font=c.CELL_NUMBER_FONTS[2],
+            text="2")
+
+        self.score = 0													#over the course of game we initially set this to zero
+
+
+    # Matrix Manipulation Functions/logic 
+																		# matrix function that will be called during gameplay there will be four functions that manipulate the four by four matrix we created in srart_game & they will be called in different combinations and sequences based on the move of player.each function will use nested for loop to change the values and/or position of the values in the matrix 
+    def stack(self):									# frist is stack,stack will compress all the non zero numbers in the matrix towards one side of the board eliminating all the gaps of of empty cells between them.we will write stack function to compress to the left side 
+        new_matrix = [[0] * 4 for _ in range(4)]		# we create a new matrix od all zeros 
+        for i in range(4):								# a nested for loop for each row in our matrix we are going to keep track of the number of cells containing non-zero numbera and 
+            fill_position = 0							# a variable called fill_position
+            for j in range(4):							# if the value in the cell is non-zero we set the value in new matrix at i fill_position to the value in the self dot matrix at i comma j  
+                if self.matrix[i][j] != 0:
+                    new_matrix[i][fill_position] = self.matrix[i][j]
+                    fill_position += 1					# then increment fill position by one after our for loop  
+        self.matrix = new_matrix						# set self.matrix to a new matrix 
+
+
+    def combine(self):																		# combine which adds together all horizontally adjacent non-zero numbers of the same value in the matrix and merges thm to the left position.respect to GUI this is step when two tiles of of the same value say 4 merge together and collapse in one tile of their sum or 8.
+        for i in range(4):																	# so in this nested for loop we're only looping untill column two so we can index with j +1 will checking the value at i ,j in the martix is not zero  and 
+            for j in range(3):
+                if self.matrix[i][j] != 0 and self.matrix[i][j] == self.matrix[i][j + 1]:	#it is equal to the value i, [j+1] 
+                    self.matrix[i][j] *= 2													# if so, we multiply the value at [i][j] by 2 
+                    self.matrix[i][j + 1] = 0												# and make the value at [i][j+1] = 0
+                    self.score += self.matrix[i][j]											# update score by adding the newly combined value to self.score 
+
+
+    def reverse(self):						  					# reverse method which will reverse the oder order of the matrix we will start by creating a new new matrix that will begin as an empty list  
+        new_matrix = []
+        for i in range(4):										# then in our outer for loop we wil make sure append an empty list to new matrix for esch row  
+            new_matrix.append([])								# in our for loop will append that empty list the value n our martix at [i] [3-j]  
+            for j in range(4):									# so the oder of values are reversed
+                new_matrix[i].append(self.matrix[i][3 - j])		# then after the nested for loop...
+        self.matrix = new_matrix								# set self.martix to new matrix
+
+
+    def transpose(self):									#transpose will flip the martix over its diagonal for this we once again a new metrix of all zeros then in our nested for loop  	
+        new_matrix = [[0] * 4 for _ in range(4)]			# we set every value at [i][j] in new martix with the value of at the current matrix 
+        for i in range(4):
+            for j in range(4):
+                new_matrix[i][j] = self.matrix[j][i]		# then we set self.matrix to new matrix [line 120]
+        self.matrix = new_matrix						
+
+
+    # Add a new 2 or 4 tile randomly to an empty cell		#this tile can be 2 tile or four tile
+
+    def add_new_tile(self):									#call the function add_new_tile we all take approach to this as we did in start game when we added 2 2s randomly to the matrix
+        row = random.randint(0, 3)
+        col = random.randint(0, 3)
+        while(self.matrix[row][col] != 0):
+            row = random.randint(0, 3)
+            col = random.randint(0, 3)
+        self.matrix[row][col] = random.choice([2, 4])		# this code randomly select either a 2 or a 4 to fill the matrix at row column for this we just replace the 2 with random not choice on the list  
+
+
+    # Update the GUI to match the matrix					# 
+
+    def update_GUI(self):									#a function called update_GUI will update the GUI to correspond to the new malipulated matrix we once again a nested fo loop  and in this we check which cells have zero value
+        for i in range(4):
+            for j in range(4):
+                cell_value = self.matrix[i][j]				# for those that do we can figure that cell display the empty cell color and no text
+                if cell_value == 0:							# 
+                    self.cells[i][j]["frame"].configure(bg=c.EMPTY_CELL_COLOR)
+                    self.cells[i][j]["number"].configure(
+                        bg=c.EMPTY_CELL_COLOR, text="")
+                else:											# otherwise
+                    self.cells[i][j]["frame"].configure(		# we configure that cell to show the background colors specified in cell colors ,the font volor specified  in cell number colors and font type specified in cell fonts
+                        bg=c.CELL_COLORS[cell_value])
+                    self.cells[i][j]["number"].configure(
+                        bg=c.CELL_COLORS[cell_value],			
+                        fg=c.CELL_NUMBER_COLORS[cell_value],	# as well as set in that cell to the appropriate  value
+                        font=c.CELL_NUMBER_FONTS[cell_value],
+                        text=str(cell_value))
+        self.score_label.configure(text=self.score)				# here we also have to update the score display  so we call configure on score lebel with text as seld=f dot score 
+        self.update_idletasks()									# then we have to call tkinter interface member function update  idletasks to immediatey
+
+
+    # Arrow-Press Functions/game control 					# 1st find each of these arrow keys to a specific function correspond to that arrow,going back in constructor and ... 
+
+    def left(self, event):									#now we define this function which ecah consists of a sequences of different combinations of the the matrix manipulation function 
+        self.stack()										#left move is the most stright forward sequence of matrix manipulation functions we first call stack to compress the non zero number to left side of the matrix  
+        self.combine()										# call combine to combine the horizontally adjacent like numbers
+        self.stack()										#  then we call stack again to eliminate the newly - created zero cells from the combined function
+        self.add_new_tile()									# call add new tile
+        self.update_GUI()									# and update gui
+        self.game_over()									# call game_over
+
+
+    def right(self, event):									# To transfrom a right swipe into a keft swipe ,JUST NEED 	to reverse our matrix
+        self.reverse()										#call stack
+        self.stack()										# 
+        self.combine()										#call combine
+        self.stack()										#call stack
+        self.reverse()										#call revese again to stucture the matrix back into its original orientation and then 
+        self.add_new_tile()									# call add_new_tile
+        self.update_GUI()									#call update_GUI
+        self.game_over()									#call game_over
+
+
+    def up(self, event):
+        self.transpose()
+        self.stack()
+        self.combine()
+        self.stack()
+        self.transpose()
+        self.add_new_tile()
+        self.update_GUI()
+        self.game_over()
+
+
+    def down(self, event):					# for this move(down) we have to transpose and reverse the matrix.so,leftward movement can have a downward effect.when we transpose the martix it will work like a move so,then we have to reverse the matrix  to make it work like the left move 
+        self.transpose()
+        self.reverse()
+        self.stack()
+        self.combine()
+        self.stack()
+        self.reverse()
+        self.transpose()
+        self.add_new_tile()
+        self.update_GUI()
+        self.game_over()
+
+
+    # Check if any moves are possible
+
+    def horizontal_move_exists(self):
+        for i in range(4):											# make nested loop which checks wheather any values in our matrix at [i][j] equals to value at[i][j+1] if so we return true other false
+            for j in range(3):
+                if self.matrix[i][j] == self.matrix[i][j + 1]:
+                    return True
+        return False
+
+
+    def vertical_move_exists(self):							# make nested for loop which cheks wheather any in the martix at [i][j] equals to value at [j+1][i] is so return true otherwise false 
+        for i in range(3):
+            for j in range(4):
+                if self.matrix[i][j] == self.matrix[i + 1][j]:
+                    return True
+        return False
+
+
+    # Check if Game is Over (Win/Lose)
+																												# Fanctionality to check whether the game win or loss 
+    def game_over(self):																						# take a function called game_over which we call after every turn and we check whether the player won which would mean that 2048 is on the 
+        if any(2048 in row for row in self.matrix):										# for this we use a built-in function any saying any 2048 in row for row and self.metrix 
+            game_over_frame = tk.Frame(self.main_grid, borderwidth=2)					# if so we create a new frame call game over frame whose parent will be in main grid and let's give it a border width of 2 
+            game_over_frame.place(relx=0.5, rely=0.5, anchor="center")					# then we place game ove frame onto main main_grid & we set relx & rely to 05 hich will positioned in the middle then align this frame at the center 
+            tk.Label(																	# addy lebel to game on which a lebel to game_over frame on which will write you win  
+                game_over_frame,														# set background color , font color, font to our specified colors
+                text="You win!",
+                bg=c.WINNER_BG,
+                fg=c.GAME_OVER_FONT_COLOR,
+                font=c.GAME_OVER_FONT).pack()				# also have to call pack() on this display it in game over frame 
+        elif not any(0 in row for row in self.matrix) and not self.horizontal_move_exists() and not self.vertical_move_exists():    # check player lost the game means that every sequence on the board is occupied and there are on possible moves left. for this we have to check no zeros left in the matrix which we can also use any for then to check available legal moves we take functions,one to check horizontal moves and other to theck vertical moves.(line 202-218)
+            game_over_frame = tk.Frame(self.main_grid, borderwidth=2)
+            game_over_frame.place(relx=0.5, rely=0.5, anchor="center")
+            tk.Label(
+                game_over_frame,    				# change text to game over and background to our losser background  
+                text="Game over!",
+                bg=c.LOSER_BG,
+                fg=c.GAME_OVER_FONT_COLOR,
+                font=c.GAME_OVER_FONT).pack()
+
+
+def main(): 					# then we just need to add this code fragment so, game runs by running our script in command line 
+    Game()
+
+
+if __name__ == "__main__":
+    main()
